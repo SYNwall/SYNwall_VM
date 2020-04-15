@@ -1,8 +1,8 @@
 ﻿# Packer configuration for the socks server
 
-This configuration helps you to install the socks server with SYNwall
+This configuration helps you to install the socks server with SYNwall (SYNgate).
 Packer is configured to create a virtual machine based on the CentOS/RedHat distribution.
-The VM will have the Dante socks server and SYNwall module installed and running on it.
+The VM will have the Dante socks server and SYNgate module installed and running on it.
 
 ## Packer configuration
 
