@@ -1,0 +1,47 @@
+{
+    "builders": [
+        {
+            "type": "virtualbox-iso",
+            "name": "virtualbox",
+            "boot_command":"<up><wait><tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/kickstart.cfg <enter>",
+            "boot_wait": "10s",
+            "disk_size": "{{ user `root_disk_size` }}",
+            "guest_os_type": "{{user `guest_os_type`}}",
+            "headless": "false",
+            "http_directory": "{{ user `http_dir` }}",
+            "iso_urls": "{{ user `iso_path`}}/{{ user `iso_file_name` }}",
+            "iso_checksum_type": "{{ user `checksum_type` }}",
+            "iso_checksum": "{{ user `iso_checksum` }}",
+	        "ssh_username": "{{ user `ssh_username` }}",
+            "ssh_password": "{{ user `ssh_password` }}",
+	        "ssh_timeout": "20m",
+            "shutdown_command": "echo 'packer' | sudo -S shutdown -P now",
+            "virtualbox_version_file": ".vbox_version",
+            "format": "ova",
+            "vm_name": "{{ user `name` }}-{{isotime \"02-01-06-03-04-05\"}}",
+            "hard_drive_interface": "scsi",
+            "vboxmanage": [
+                [
+                    "modifyvm",
+                    "{{.Name}}",
+                    "--memory",
+                    "{{ user `memory`}}"
+                ],
+                [
+                    "modifyvm",
+                    "{{.Name}}",
+                    "--cpus",
+                    "{{ user `cpus` }}"
+                ]
+            ]
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "ansible-local",
+            "playbook_file": "./ansible/dante.yml",
+            "playbook_dir": "./ansible",
+            "inventory_file": "./ansible/hosts"
+        }
+    ]
+}

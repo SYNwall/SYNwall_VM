@@ -1,0 +1,6 @@
+- name: Install Dante socks
+  hosts: socks-synwall
+  become: true
+  connection: local
+  roles:
+    - socks-synwall

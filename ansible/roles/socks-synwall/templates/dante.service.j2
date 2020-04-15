@@ -1,0 +1,10 @@
+[Unit]
+Description=Dante socks proxy
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/local/sbin/sockd -f {{ dante.conf.path }}
+
+[Install]
+WantedBy=multi-user.target

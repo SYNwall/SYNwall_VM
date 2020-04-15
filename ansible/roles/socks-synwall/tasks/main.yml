@@ -1,0 +1,139 @@
+---
+# tasks file for roles/socks-synwall
+
+- name: Create /root/.ssh (dev only)
+  file:
+    name: "/root/.ssh"
+    state: directory
+
+- name: Copy ssh private key (dev only)
+  copy:
+    dest: "/root/.ssh/id_rsa"
+    src: "id_rsa"
+    owner: root
+    mode: 0600
+
+- name: Copy ssh public key (dev only)
+  copy:
+    dest: "/root/.ssh/id_rsa.pub"
+    src: "id_rsa.pub"
+    owner: root
+    mode: 0600
+
+- name: Open encrypted partition
+  block:
+
+    - name: Copy keyfile
+      copy:
+        dest: "/tmp/keyfile"
+        src: "keyfile"
+
+    # cryptsetup luksOpen /dev/mapper/<volgroup>-<logicalvol> <name>
+    - name: Open the LUKS encrypted partition
+      luks_device:
+        device: "/dev/mapper/{{ luks.volgroup }}-{{ luks.logicalvol }}"
+        keyfile: "/tmp/keyfile"
+        name: "{{ luks.name }}"
+        state: opened
+
+    - name: Remove noauto option to open the LUKS partition at boot
+      replace:
+        path: "/etc/crypttab"
+        regexp: "noauto"
+        replace: ""
+
+  always:
+
+    - name: Delete keyfile
+      file:
+        path: "/tmp/keyfile"
+        state: absent
+
+- name: Install packages
+  yum:
+    name: ["gcc", "make", "kernel-devel"]
+    state: installed
+
+- name: Download Dante socks
+  get_url:
+    dest: "{{ dante.download_dir }}/dante-{{ dante.version }}.tar.gz"
+    checksum: "{{ dante.checksum_alg }}:{{ dante.checksum }}"
+    url: "{{ dante.url }}/dante-{{ dante.version }}.tar.gz"
+
+- name: Unarchive Dante
+  unarchive:
+    remote_src: yes
+    dest: "{{ dante.download_dir }}/"
+    src: "{{ dante.download_dir }}/dante-{{ dante.version }}.tar.gz"
+
+- name: Install Dante
+  block:
+    - name: ./configure
+      command:
+        chdir: "{{ dante.download_dir }}/dante-{{ dante.version }}"
+        cmd: "./configure"
+    - name: make
+      command:
+        chdir: "{{ dante.download_dir }}/dante-{{ dante.version }}"
+        cmd: "make"
+    - name: make check
+      command:
+        chdir: "{{ dante.download_dir }}/dante-{{ dante.version }}"
+        cmd: "make check"
+    - name: make install
+      command:
+        chdir: "{{ dante.download_dir }}/dante-{{ dante.version }}"
+        cmd: "make install"
+
+- name: Rendering Dante configuration
+  template:
+    src:  "danted.conf.j2"
+    dest: "{{ dante.conf.path }}"
+
+- name: Rendering service file for Dante
+  template:
+    src:  "dante.service.j2"
+    dest: "/etc/systemd/system/dante.service"
+
+- name: Download SYNgate
+  git:
+    accept_hostkey: yes
+    dest: "{{ syngate.path }}"
+    repo: "{{ syngate.repo }}"
+    force: yes
+
+- name: Make SYNgate
+  shell:
+    chdir: "{{ syngate.path }}"
+    cmd: "SYNGATE=1 make"
+
+- name: Copy SYNgate.ko in {{ syngate.module_dir }}
+  copy:
+    remote_src: yes
+    src: "{{ syngate.path }}/SYNgate.ko"
+    dest: "{{ syngate.module_dir }}"
+  become: true
+
+- name: Execute depmod
+  shell: depmod -a
+  become: true
+
+- name: Create config file in /etc/modules-load.d
+  copy:
+    src: syngate.conf
+    dest: /etc/modules-load.d/
+  become: true
+
+- name: Create parameters file in /etc/modprobe.d
+  template:
+    src: syngate.conf.j2
+    dest: /etc/modprobe.d/syngate.conf
+    owner: root
+    mode: u=rw,g=,o=
+  become: true
+
+- name: Start and enable Dante service
+  service:
+    enabled: yes
+    name: dante
+    state: started

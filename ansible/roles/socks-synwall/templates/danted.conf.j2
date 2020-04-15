@@ -1,0 +1,29 @@
+logoutput: syslog {{ dante.conf.log_path }}
+internal: 0.0.0.0 port = 1080
+external: {{ dante.conf.interface }}
+#debug: 2
+
+socksmethod: username
+user.privileged: root
+user.unprivileged: nobody
+
+client pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: error
+}
+
+socks pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    command: connect
+    log: error
+    socksmethod: username
+    protocol: tcp
+}
+
+socks pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    command: connect
+    log: error
+    socksmethod: username
+    protocol: udp
+}

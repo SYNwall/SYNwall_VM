@@ -1,0 +1,2 @@
+[socks-synwall]
+localhost ansible_connection=local
